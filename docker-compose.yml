@@ -1,0 +1,75 @@
+version: '3.5'
+
+volumes:
+  local_postgres_data: {}
+  redis_data:
+
+networks:
+  rise-network-prod:
+  rise-network-test:
+
+services:
+  # production postgres instance
+  postgres:
+    build: ./
+    image: postgres:11.6
+    container_name: risevest-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rise-api}
+      POSTGRES_USER: ${POSTGRES_USER:-starq}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-test1234}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+    volumes:
+      - local_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - rise-network-prod  
+
+
+  # Unit test PostgreSQL instance
+  postgres-test:
+    image: postgres:latest
+    container_name: test-postgres
+    ports:
+      - '5433:5432' # Different port to avoid conflicts with production
+    environment:
+      POSTGRES_DB: testdb
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpassword
+    
+    networks:
+      - rise-network-test
+
+  # redis instance
+
+  redis:
+    image: redis:latest
+    container_name: rise-redis
+    restart: always
+    command: redis-server --requirepass Level5acess200
+    environment:
+      REDIS_DATABASE: rise
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
+    networks:
+      - rise-network-prod
+
+  nodeapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '1900:1900'  # Adjust the ports as needed
+    depends_on:
+      - redis
+      - postgres
+      - postgres-test
+    networks:
+      - rise-network-prod
+      - rise-network-test    
+
+   
