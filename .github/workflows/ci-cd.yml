@@ -1,0 +1,45 @@
+name: CI/CD to Heroku
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Docker Image
+        run: docker build -t ${{ secrets.HEROKU_APP_NAME }} .
+
+      - name: Log in to Heroku
+        run: echo "${{ secrets.HEROKU_API_KEY }}" | docker login --username=_ --password-stdin registry.heroku.com
+
+      - name: Push Docker Image to Heroku
+        run: docker push registry.heroku.com/${{ secrets.HEROKU_APP_NAME }}/web
+
+      - name: Release Heroku App
+        run: |
+          curl -n -X PATCH https://api.heroku.com/apps/${{ secrets.HEROKU_APP_NAME }}/formation \
+            -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "updates": [
+                {
+                  "type": "web",
+                  "docker_image": "registry.heroku.com/${{ secrets.HEROKU_APP_NAME }}/web"
+                }
+              ]
+            }'

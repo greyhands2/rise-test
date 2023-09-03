@@ -15,8 +15,8 @@ const performanceChallenge = catchAsyncError(async (req: Request, res: Response,
     
                 const result = await sequelize().query(`WITH UserPostCounts AS (
                     SELECT u."name", COUNT(p."id") AS "postCount"
-                    FROM "Users" u
-                    LEFT JOIN "Posts" p ON u."name" = p."userName"
+                    FROM "User" u
+                    LEFT JOIN "Post" p ON u."name" = p."userName"
                     GROUP BY u."name"
                     ORDER BY "postCount" DESC
                     LIMIT 3
@@ -24,22 +24,22 @@ const performanceChallenge = catchAsyncError(async (req: Request, res: Response,
                 
                 SELECT u."name", u."name", "latestCommentCreatedAt", p."title", c."text"
                 FROM UserPostCounts upc
-                JOIN "Users" u ON upc."name" = u."name"
+                JOIN "User" u ON upc."name" = u."name"
                 JOIN (
                     SELECT p."userName", p."title", "latestCommentCreatedAt", p."id" AS "postId"
-                    FROM "Posts" p
+                    FROM "Post" p
                     LEFT JOIN (
                     SELECT c."postId", MAX(c."createdAt") AS "latestCommentCreatedAt"
-                    FROM "Comments" c
+                    FROM "Comment" c
                     GROUP BY c."postId"
                     ) lc ON p."id" = lc."postId"
                 ) p ON u."name" = p."userName"
                 LEFT JOIN (
                     SELECT c."userName", c."postId", c."text"
-                    FROM "Comments" c
+                    FROM "Comment" c
                     JOIN (
                     SELECT "postId", MAX("createdAt") AS "latestCommentCreatedAt"
-                    FROM "Comments"
+                    FROM "Comment"
                     GROUP BY "postId"
                     ) lc ON c."postId" = lc."postId" AND c."createdAt" = lc."latestCommentCreatedAt"
                 ) c ON p."postId" = c."postId"
